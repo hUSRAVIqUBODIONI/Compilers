@@ -140,31 +140,29 @@ class SpecToken(Token):
     def __str__(self):
         return f"SPEC {self.Coords.ToString()}: {self.Tag.name}"
 
-
 class Automat:
     def __init__(self):
-        
         self.Table = [
-                #  N    i    n    t    f    l    o    a    <   a-z   @  ' ' '\n'
-                [  1,   2,  10,  10,   5,  10,  10,  10,   8,  10,  11,  0,  0],  # 0
-                [  1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1, -1],  # 1
-                [ 10,  10,  3,   10,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 2
-                [ 10,  10,  10,   4,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 3
-                [ 10,  10,  10,  10,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 4
-                [ 10,  10,  10,  10,  10,   6,  10,  10,  -1,  10,  -1, -1, -1],  # 5
-                [ 10,  10,  10,  10,  10,  10,   7,  10,  -1,  10,  -1, -1, -1],  # 6
-                [ 10,  10,  10,  10,  10,  10,  10,  13,  -1,  10,  -1, -1, -1],  # 7
-                [ -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,   9,  -1,  -1, -1, -1],  # 8
-                [ -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1, -1],  # 9
-                [ 10,  10,  10,  10,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 10
-                [ 11,  11,  11,  11,  11,  11,  11,  11,  11,  11,  12, 11, 11],  # 11
-                [ -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1, -1],  # 12
-                [ 10,  10,  10,  14,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 13
-                [ 10,  10,  10,  10,  10,  10,  10,  10,  -1,  10,  -1, -1, -1]  # 14
-                ]
-        self.Finals = [1,2,3,4,5,6,7,8,9,10,12]
+            #  N    i    n    t    f    l    o    a    <   a-z   @  ' ' '\n'
+            [  1,   2,  10,  10,   5,  10,  10,  10,   8,  10,  11,  0,  0],  # 0
+            [  1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1, -1],  # 1
+            [ 10,  10,  3,   10,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 2
+            [ 10,  10,  10,   4,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 3
+            [ 10,  10,  10,  10,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 4
+            [ 10,  10,  10,  10,  10,   6,  10,  10,  -1,  10,  -1, -1, -1],  # 5
+            [ 10,  10,  10,  10,  10,  10,   7,  10,  -1,  10,  -1, -1, -1],  # 6
+            [ 10,  10,  10,  10,  10,  10,  10,  13,  -1,  10,  -1, -1, -1],  # 7
+            [ -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,   9,  -1,  -1, -1, -1],  # 8
+            [ -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1, -1],  # 9
+            [ 10,  10,  10,  10,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 10
+            [ 11,  11,  11,  11,  11,  11,  11,  11,  11,  11,  12, 11, 11],  # 11
+            [ -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1, -1],  # 12
+            [ 10,  10,  10,  14,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 13
+            [ 10,  10,  10,  10,  10,  10,  10,  10,  -1,  10,  -1, -1, -1]  # 14
+        ]
+        self.Finals = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12]
 
-    def NextState(self,pos: Position,CurState):
+    def NextState(self, pos: Position, CurState):
         if pos.Cp() == 'i':
             return self.Table[CurState][1]
         elif pos.Cp() == 'n':
@@ -195,8 +193,8 @@ class Automat:
             return self.Table[CurState][0]
         else:
             return -1
-        
-       
+
+
 class Lexer:
     def __init__(self, program: str):
         self.program = program
@@ -208,22 +206,26 @@ class Lexer:
         self.current_state = 0
         self.prev_state = 0
 
-
     def NextToken(self):
         while self.position.Cp() != -1:
             self.skip()
 
             start = Position(self.program, self.position.line, self.position.pos, self.position.index)
             self.current_state = 0
-          
 
             while self.current_state != -1 and self.position.Cp() != -1:
                 self.prev_state = self.current_state
                 self.current_state = self.a.NextState(self.position, self.current_state)
-               
-                temp = Position(self.program, self.position.line, self.position.pos, self.position.index)
+
                 
-                
+                if self.current_state == -1:
+                    end = Position(self.program, self.position.line, self.position.pos, self.position.index)
+                    self.process_token(start, end)
+                    start = Position(self.program, self.position.line, self.position.pos, self.position.index)
+                    self.current_state = 0  #
+                    continue
+
+                # Обработка комментариев
                 if self.current_state == 11:
                 
                     self.position.next()
@@ -235,27 +237,21 @@ class Lexer:
                       
                         self.position.next()
                         self.current_state = self.a.NextState(self.position, self.current_state)
-                elif self.current_state == -1 and self.position.Cp()!=-1:
-                 
+
+              
+                if self.prev_state == 1 and self.current_state == 10:
                     end = Position(self.program, self.position.line, self.position.pos, self.position.index)
-                    if not(self.position.IsNewLine() or self.position.isWhiteSpace()):
-                       
-                        self.errors.append(Message(True, end, f"Invalid token at"))
-                       
-                        self.process_token(start,end)
-                    else:
-                        
-                        self.process_token(start,end)
-                if self.current_state != -1 and temp.next().Cp() ==-1:
-                 
-                    self.position.next()
-                    end = Position(self.program, self.position.line, self.position.pos, self.position.index)
-             
-                    self.prev_state = self.current_state
-                    self.process_token(start,end)
-            
+                    self.process_token(start, end)
+                    start = Position(self.program, self.position.line, self.position.pos, self.position.index)
+                    self.current_state = 0  
+                    continue
+
                 self.position.next()
-            
+
+          
+            if self.current_state != -1 and self.position.Cp() == -1:
+                end = Position(self.program, self.position.line, self.position.pos, self.position.index)
+                self.process_token(start, end)
 
     def skip(self):
         while self.position.isWhiteSpace() or self.position.IsNewLine():
@@ -264,7 +260,7 @@ class Lexer:
     def process_token(self, start: Position, end: Position):
         lexeme = self.program[start.Index():end.Index()]
         if self.prev_state == 1:
-            self.tokens.append(NumberToken(start, end, lexeme))
+            self.tokens.append(NumberToken(start, end, int(lexeme)))
         elif self.prev_state == 10:
             self.tokens.append(Ident(start, end, lexeme))
         elif self.prev_state == 14:
@@ -279,9 +275,10 @@ class Lexer:
             self.comments.append(Fragment(start, end))
         elif self.prev_state == 11:
             print("START")
-        
+
+
 if __name__ == "__main__":
-    file = open('/Users/husravi_qubodioni/Desktop/Compiletor/lab4/test.txt', 'r')
+    file = open('/Users/husravi_qubodioni/Desktop/Git-reps/Compilers/lab4/test.txt', 'r')
     content = file.read()
 
     lexer = Lexer(content)
