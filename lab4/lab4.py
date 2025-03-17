@@ -9,9 +9,6 @@ class Position:
         self.line = line  # Номер текущей строки
         self.pos = pos    # Позиция в текущей строке
         self.index = index  # Индекс в тексте
-    
-    
-
 
     def Line(self):
         return self.line
@@ -210,7 +207,7 @@ class Lexer:
         self.a = Automat()
         self.current_state = 0
         self.prev_state = 0
-        self.last_finish_state = 0
+
 
     def NextToken(self):
         while self.position.Cp() != -1:
