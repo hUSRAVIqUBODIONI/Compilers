@@ -147,7 +147,7 @@ class Automat:
         self.Table = [
                 #  N    i    n    t    f    l    o    a    <   a-z   @  ' ' '\n'
                 [  1,   2,  10,  10,   5,  10,  10,  10,   8,  10,  11,  0,  0],  # 0
-                [  1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1, -1, -1],  # 1
+                [  1,   2,  10,  10,   5,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 1
                 [ 10,  10,  3,   10,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 2
                 [ 10,  10,  10,   4,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 3
                 [ 10,  10,  10,  10,  10,  10,  10,  10,  -1,  10,  -1, -1, -1],  # 4
@@ -237,6 +237,15 @@ class Lexer:
                         self.position.next()
                         self.current_state = self.a.NextState(self.position, self.current_state)
                 temp = Position(self.program, self.position.line, self.position.pos, self.position.index)
+
+                if self.prev_state == 1 and self.current_state == 10:
+                    end = Position(self.program, self.position.line, self.position.pos, self.position.index)
+                    self.process_token(start, end)
+                    start = Position(self.program, self.position.line, self.position.pos, self.position.index)
+                    self.current_state = 0  # Сбрасываем состояние для нового токена
+                    continue
+
+               
                 if self.current_state == -1 and self.position.Cp()!=-1:
                    
                     end = Position(self.program, self.position.line, self.position.pos, self.position.index)
