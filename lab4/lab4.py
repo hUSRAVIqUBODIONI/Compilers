@@ -140,7 +140,6 @@ class SpecToken(Token):
     def __str__(self):
         return f"SPEC {self.Coords.ToString()}: {self.Tag.name}"
 
-
 class Automat:
     def __init__(self):
         
