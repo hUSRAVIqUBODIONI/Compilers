@@ -219,9 +219,6 @@ class Lexer:
             while self.current_state != -1 and self.position.Cp() != -1:
                 self.prev_state = self.current_state
                 self.current_state = self.a.NextState(self.position, self.current_state)
-               
-              
-                
                 
                 if self.current_state == 11:
                     
@@ -234,6 +231,7 @@ class Lexer:
                             self.errors.append(Message(True, self.position, f"Expected end of comment"))
                       
                         self.position.next()
+                        self.prev_state = self.current_state
                         self.current_state = self.a.NextState(self.position, self.current_state)
                 temp = Position(self.program, self.position.line, self.position.pos, self.position.index)
 
@@ -250,17 +248,22 @@ class Lexer:
                     end = Position(self.program, self.position.line, self.position.pos, self.position.index)
                     if not(self.position.IsNewLine() or self.position.isWhiteSpace()):
                        
-                        self.errors.append(Message(True, end, f"Invalid token at"))
-                       
-                        self.process_token(start,end)
-                    else:
                         
+                        if not(temp.next().isWhiteSpace()):
+                            while  not(temp.next().isWhiteSpace()):
+                                self.position = temp
+                                temp.next()
+                           
+                           
+                        self.position.next()
+                        self.errors.append(Message(True, end, f"Invalid token at "))
+                       
+                    else:
                         self.process_token(start,end)
                 if self.current_state != -1 and temp.next().Cp() ==-1:
                     
                     self.position.next()
                     end = Position(self.program, self.position.line, self.position.pos, self.position.index)
-             
                     self.prev_state = self.current_state
                     self.process_token(start,end)
             
@@ -287,8 +290,7 @@ class Lexer:
             self.tokens.append(SpecToken(DomainTag.LESSER, start, end))
         elif self.prev_state == 12:
             self.comments.append(Fragment(start, end))
-        elif self.prev_state == 11:
-            print("START")
+       
         
 if __name__ == "__main__":
     file = open('/Users/husravi_qubodioni/Desktop/Git-reps/Compilers/lab4/test.txt', 'r')
