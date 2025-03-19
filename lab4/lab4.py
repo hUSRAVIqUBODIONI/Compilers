@@ -257,6 +257,7 @@ class Lexer:
                            
                         self.position.next()
                         self.errors.append(Message(True, end, f"Invalid token at "))
+                        self.process_token(start,self.position)
                        
                     else:
                         self.process_token(start,end)
