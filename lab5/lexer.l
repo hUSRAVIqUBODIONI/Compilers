@@ -14,6 +14,8 @@ int yycolumn = 1;
 DIGIT    [0-9]
 LETTER   [a-zA-Z]
 ID       {LETTER}({LETTER}|{DIGIT})*
+COMMENT  \(\*
+OPERATOR [+-/*()]
 NUMBER   {DIGIT}+
 
 %%
@@ -28,11 +30,23 @@ NUMBER   {DIGIT}+
     process_token("IDENTIFIER",yylineno,yycolumn,temp);
     yycolumn = temp;
 }
+{COMMENT}       {
+    int start = yycolumn;
+    int finish = yycolumn + yyleng;
+    process_token("COMMENT", yylineno, start, finish);
+    yycolumn += yyleng;  
+   
+}
+{OPERATOR}       {
+    temp =yycolumn  + yyleng;
+    process_token("OPERATOR",yylineno,yycolumn,temp);
+    yycolumn = temp;
+}
 [ \t]+    {
     yycolumn += yyleng;  
 }
 \n        {
-    
+    cout << "Line: " << yylineno  << endl;
     yycolumn = 1;  
 }
 .         {
@@ -44,8 +58,9 @@ NUMBER   {DIGIT}+
 
 %%
 
-void process_token(const char* token,int col,int start,int finish) {
-    cout << "Found token: " << token << " (" << yytext << ")" << " (" << col << start << ")"  <<   " (" << col << finish << ")"  <<endl;
+void process_token(const char* token, int line, int start, int finish) {
+    cout << "Found token: " << token  <<"   " <<yytext  
+         << " at line " << line << ", columns " << start << "-" << finish << endl;
 }
 
 int main(int argc, char** argv) {
