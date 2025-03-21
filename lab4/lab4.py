@@ -207,7 +207,6 @@ class Lexer:
         self.current_state = 0
         self.prev_state = 0
 
-
     def NextToken(self):
         while self.position.Cp() != -1:
             self.skip()

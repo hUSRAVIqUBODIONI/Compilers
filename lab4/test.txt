@@ -1,9 +1,10 @@
-123 << < <<< @asdsdfs wqewe@
-
-12344qwe
-
-@ 
-asdf
+123 qwe < << int float @assd
 
 
-@
+
+fdf@
+
+@!#%$^%&^*^@
+123int
+444float
+int
