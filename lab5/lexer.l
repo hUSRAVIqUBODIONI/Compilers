@@ -32,7 +32,7 @@ NUMBER   {DIGIT}+
     yycolumn += yyleng;  
 }
 \n        {
-    yylineno++;  
+    
     yycolumn = 1;  
 }
 .         {
