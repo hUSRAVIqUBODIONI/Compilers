@@ -164,7 +164,7 @@ void free_arrays() {
 LETTER      [a-zA-Z]
 DIGIT       [0-9]
 IDENT       {LETTER}({LETTER}|{DIGIT})*
-NUMBER      [0-9]+
+NUMBER      {DIGIT}+
 WS          [ \t]+
 
 %x COMMENT CHAR
@@ -262,7 +262,7 @@ WS          [ \t]+
     cur_pos.pos++; cur_pos.index++;
 }
 
- "         { 
+"/"         { 
     Fragment frag = {cur_pos, cur_pos};
     frag.following.pos++; frag.following.index++;
     add_token(9, frag, 0, 0, NULL);

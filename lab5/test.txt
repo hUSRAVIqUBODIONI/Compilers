@@ -1,2 +1,2 @@
-(* heeey *) big       a
+(* heeey *) big   +-*/    a
 1234 shodi 
