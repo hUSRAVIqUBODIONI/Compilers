@@ -2,8 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
- 
+
+
 typedef struct {
     int line, pos, index;
 } Position;
@@ -12,7 +14,6 @@ typedef struct {
     Position starting, following;
 } Fragment;
 
- 
 typedef struct {
     int type;
     Fragment coords;
@@ -33,7 +34,6 @@ typedef struct {
     char* message;
 } Error;
 
- 
 typedef struct {
     Token* items;
     int count;
@@ -52,15 +52,18 @@ typedef struct {
     int capacity;
 } ErrorArray;
 
- 
 TokenArray tokens = {NULL, 0, 0};
 CommentArray comments = {NULL, 0, 0};
 ErrorArray errors = {NULL, 0, 0};
 
-Position cur_pos = {1, 1, 0};
-Position char_start;
+char* string_buf = NULL;
+size_t string_buf_len = 0;
+size_t string_buf_cap = 0;
 
- 
+Position cur_pos = {1, 1, 0};
+Position str_start;
+Position comment_start;
+
 void init_array(void** arr, int* count, int* capacity, size_t item_size, int initial_capacity) {
     *arr = malloc(item_size * initial_capacity);
     *count = 0;
@@ -87,15 +90,16 @@ void add_token(int type, Fragment frag, int char_val, long num_val, char* str_va
         case 3: token.attr.char_value = char_val; break;
         case 2: token.attr.number_value = num_val; break;
         case 1: token.attr.string_value = strdup(str_val); break;
+        case 10: token.attr.string_value = strdup(str_val); break;
     }
     
     add_to_array((void**)&tokens.items, &tokens.count, &tokens.capacity, sizeof(Token), &token);
 }
 
-void add_comment(Fragment frag, char* text) {
+void add_comment(Fragment frag) {
     Comment comment = {
-        .coords = frag,
-        .text = strdup(text)
+        .coords = frag
+       
     };
     add_to_array((void**)&comments.items, &comments.count, &comments.capacity, sizeof(Comment), &comment);
 }
@@ -126,13 +130,14 @@ void print_all() {
             case 7: printf(" MINUS\n"); break;
             case 8: printf(" MULTIPLY\n"); break;
             case 9: printf(" DIVIDE\n"); break;
+            case 10: printf(" STRING %s\n", tokens.items[i].attr.string_value); break;
         }
     }
     
     printf("\nCOMMENTS (%d):\n", comments.count);
     for (int i = 0; i < comments.count; i++) {
         print_frag(comments.items[i].coords);
-        printf(" %s\n", comments.items[i].text);
+        printf("\n");
     }
     
     printf("\nERRORS (%d):\n", errors.count);
@@ -143,7 +148,7 @@ void print_all() {
 
 void free_arrays() {
     for (int i = 0; i < tokens.count; i++) {
-        if (tokens.items[i].type == 1) free(tokens.items[i].attr.string_value);
+        if (tokens.items[i].type == 1 || tokens.items[i].type == 10) free(tokens.items[i].attr.string_value);
     }
     free(tokens.items);
     
@@ -156,6 +161,35 @@ void free_arrays() {
         free(errors.items[i].message);
     }
     free(errors.items);
+    
+    if (string_buf) free(string_buf);
+}
+
+void update_position(const char* text, int len) {
+    for (int i = 0; i < len; i++) {
+        if (text[i] == '\n') {
+            cur_pos.line++;
+            cur_pos.pos = 1;
+        } else {
+            cur_pos.pos++;
+        }
+        cur_pos.index++;
+    }
+}
+
+void clear_string_buf() {
+    if (string_buf) free(string_buf);
+    string_buf = NULL;
+    string_buf_len = 0;
+    string_buf_cap = 0;
+}
+
+void append_to_string(char c) {
+    if (string_buf_len >= string_buf_cap) {
+        string_buf_cap = string_buf_cap ? string_buf_cap * 2 : 16;
+        string_buf = realloc(string_buf, string_buf_cap);
+    }
+    string_buf[string_buf_len++] = c;
 }
 %}
 
@@ -166,107 +200,147 @@ DIGIT       [0-9]
 IDENT       {LETTER}({LETTER}|{DIGIT})*
 NUMBER      {DIGIT}+
 WS          [ \t]+
+HEX         [0-9a-fA-F]
 
-%x COMMENT CHAR
+%x COMMENT 
+%x STRING ESCAPE
 
 %%
 
-
-
-{WS}        { cur_pos.pos += yyleng; cur_pos.index += yyleng; }
+{WS}        { update_position(yytext, yyleng); }
 
 "(*"        { 
-    Fragment comment_frag;
-    comment_frag.starting = cur_pos;
-    cur_pos.pos += 2; cur_pos.index += 2;
-    BEGIN(COMMENT); 
+    comment_start = cur_pos;
+    update_position(yytext, yyleng);
+    BEGIN(COMMENT);
 }
 
-<COMMENT>[^*)\n]*      { cur_pos.pos += yyleng; cur_pos.index += yyleng; }
-<COMMENT>\*+[^*)\n]*   { cur_pos.pos += yyleng; cur_pos.index += yyleng; }
-<COMMENT>\*+")"        { 
-    Fragment comment_frag;
-    comment_frag.starting = cur_pos;
-    comment_frag.following.line = cur_pos.line;
-    comment_frag.following.pos = cur_pos.pos + yyleng;
-    comment_frag.following.index = cur_pos.index + yyleng;
-    
-    char* text = strndup(yytext, yyleng-2);
-    add_comment(comment_frag, text);
-    free(text);
-    
-    cur_pos.pos += yyleng; cur_pos.index += yyleng;
-    BEGIN(INITIAL); 
-}
-<COMMENT><<EOF>>       { 
-    add_error(cur_pos, "Unclosed comment");
-    return 0; 
-}
-
-"'"        { 
-    char_start = cur_pos;
-    cur_pos.pos++; cur_pos.index++;
-    BEGIN(CHAR); 
-}
-
-<CHAR>[^'\n\\]+  { 
-    Fragment frag = {char_start, cur_pos};
-    frag.following.pos += yyleng;
-    frag.following.index += yyleng;
-    add_token(3, frag, yytext[0], 0, NULL);
-    cur_pos.pos += yyleng; cur_pos.index += yyleng;
+<COMMENT>"*)" {
+    Fragment comment_frag = {comment_start, cur_pos};
+    comment_frag.following.pos += yyleng;
+    comment_frag.following.index += yyleng;
+    add_comment(comment_frag);
+    update_position(yytext, yyleng);
     BEGIN(INITIAL);
 }
 
-<CHAR>\\n   { 
-    Fragment frag = {char_start, cur_pos};
-    frag.following.pos += 2;
-    frag.following.index += 2;
-    add_token(3, frag, '\n', 0, NULL);
-    cur_pos.pos += 2; cur_pos.index += 2;
+<COMMENT>[^*\n]+      { update_position(yytext, yyleng); }
+<COMMENT>\*[^*)\n]*   { update_position(yytext, yyleng); }
+<COMMENT>\n          { update_position(yytext, yyleng); }
+<COMMENT><<EOF>> {
+    add_error(comment_start, "Find end of programm expected *)");
+    clear_string_buf();  // Очищаем буфер
+    BEGIN(INITIAL);      // Возвращаемся в начальное состояние
+    return 0;            // Завершаем лексический анализ
+}
+
+"{"         { 
+    str_start = cur_pos;
+    clear_string_buf();
+    BEGIN(STRING);
+    update_position(yytext, yyleng);
+}
+
+<STRING>"}" {
+    Fragment frag = {str_start, cur_pos};
+    frag.following.pos++; 
+    frag.following.index++;
+    append_to_string('\0');
+    add_token(10, frag, 0, 0, string_buf);
+    clear_string_buf();
+    update_position(yytext, yyleng);
     BEGIN(INITIAL);
 }
 
-"("         { 
-    Fragment frag = {cur_pos, cur_pos};
-    frag.following.pos++; frag.following.index++;
-    add_token(4, frag, 0, 0, NULL);
-    cur_pos.pos++; cur_pos.index++;
+<STRING>"#{" {
+    append_to_string('{');
+    update_position(yytext, yyleng);
 }
 
-")"         { 
-    Fragment frag = {cur_pos, cur_pos};
-    frag.following.pos++; frag.following.index++;
-    add_token(5, frag, 0, 0, NULL);
-    cur_pos.pos++; cur_pos.index++;
+<STRING>"#}" {
+    append_to_string('}');
+    update_position(yytext, yyleng);
+}
+
+<STRING>"##" {
+    append_to_string('#');
+    update_position(yytext, yyleng);
+}
+
+<STRING>"#" {
+    update_position(yytext, yyleng);
+    BEGIN(ESCAPE);
+}
+
+<STRING>\n  {
+    add_error(cur_pos, "Newline in string");
+    update_position(yytext, yyleng);
+}
+
+<STRING>.   {
+    append_to_string(yytext[0]);
+    update_position(yytext, yyleng);
+}
+<STRING><<EOF>> {
+    add_error(str_start, "Unclosed string, expected '}'");
+    clear_string_buf();  // Очищаем буфер
+    BEGIN(INITIAL);      // Возвращаемся в начальное состояние
+    return 0;            // Завершаем лексический анализ
+}
+
+<ESCAPE>{HEX}{2} {
+    char hex[3] = {yytext[0], yytext[1], '\0'};
+    char *endptr;
+    errno = 0;
+    int c = strtol(hex, &endptr, 16);
+   
+    if (endptr == hex || errno == ERANGE) {
+        add_error(cur_pos, "Invalid hex escape");
+    } else {
+        
+        char string[9]; 
+        snprintf(string, sizeof(string), "%d", c); 
+        for(int i=0; i< strlen(string);i++){
+            append_to_string(string[i]);
+        }
+    }
+    
+    update_position(yytext, yyleng);
+    BEGIN(STRING);
+}
+
+<ESCAPE>.   {
+    add_error(cur_pos, "Invalid escape sequence");
+    update_position(yytext, yyleng);
+    BEGIN(STRING);
 }
 
 "+"         { 
     Fragment frag = {cur_pos, cur_pos};
     frag.following.pos++; frag.following.index++;
     add_token(6, frag, 0, 0, NULL);
-    cur_pos.pos++; cur_pos.index++;
+    update_position(yytext, yyleng);
 }
 
 "-"         { 
     Fragment frag = {cur_pos, cur_pos};
     frag.following.pos++; frag.following.index++;
     add_token(7, frag, 0, 0, NULL);
-    cur_pos.pos++; cur_pos.index++;
+    update_position(yytext, yyleng);
 }
 
 "*"         { 
     Fragment frag = {cur_pos, cur_pos};
     frag.following.pos++; frag.following.index++;
     add_token(8, frag, 0, 0, NULL);
-    cur_pos.pos++; cur_pos.index++;
+    update_position(yytext, yyleng);
 }
 
 "/"         { 
     Fragment frag = {cur_pos, cur_pos};
     frag.following.pos++; frag.following.index++;
     add_token(9, frag, 0, 0, NULL);
-    cur_pos.pos++; cur_pos.index++;
+    update_position(yytext, yyleng);
 }
 
 {NUMBER}    { 
@@ -274,14 +348,14 @@ WS          [ \t]+
     frag.following.pos += yyleng; frag.following.index += yyleng;
     long num = atol(yytext);
     add_token(2, frag, 0, num, NULL);
-    cur_pos.pos += yyleng; cur_pos.index += yyleng;
+    update_position(yytext, yyleng);
 }
 
 {IDENT}     { 
     Fragment frag = {cur_pos, cur_pos};
     frag.following.pos += yyleng; frag.following.index += yyleng;
     add_token(1, frag, 0, 0, yytext);
-    cur_pos.pos += yyleng; cur_pos.index += yyleng;
+    update_position(yytext, yyleng);
 }
 
 \n          { cur_pos.line++; cur_pos.pos = 1; cur_pos.index++; }
@@ -292,11 +366,9 @@ WS          [ \t]+
     cur_pos.pos++; cur_pos.index++; 
 }
 
-
 %%
 
 int main(int argc, char **argv) {
- 
     init_array((void**)&tokens.items, &tokens.count, &tokens.capacity, sizeof(Token), 100);
     init_array((void**)&comments.items, &comments.count, &comments.capacity, sizeof(Comment), 50);
     init_array((void**)&errors.items, &errors.count, &errors.capacity, sizeof(Error), 50);
