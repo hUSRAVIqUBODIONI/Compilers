@@ -349,7 +349,7 @@ class Lexer:
 
 
 if __name__ == "__main__":
-    file = open('/Users/husravi_qubodioni/Desktop/Compiletor/lab3/test.txt','r')
+    file = open('/Users/husravi_qubodioni/Desktop/Git-reps/Compilers/lab3/test.txt','r')
     content = file.read()
     
     lexer = Lexer(content)
@@ -361,4 +361,8 @@ if __name__ == "__main__":
     print("Errors:")
     for i in lexer.errors[:-1]:
         print(i.Text,i.Position.ToString())
+    print("\n")
+    print("Comments:")
+    for i in lexer.comments:
+        print(i.ToString())
     file.close()
