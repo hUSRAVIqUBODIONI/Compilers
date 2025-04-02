@@ -4,7 +4,22 @@
 #include <string.h>
 #include <errno.h>
 
+#define TAG_IDENT 1
+#define TAG_NUMBER 2
+#define TAG_CHAR 3
+#define TAG_LPAREN 4
+#define TAG_RPAREN 5
+#define TAG_PLUS 6
+#define TAG_MINUS 7
+#define TAG_MULTIPLY 8
+#define TAG_DIVIDE 9
+#define TAG_STRING 10
 
+char* tag_names[] = {
+    "END_OF_PROGRAM", "IDENT", "NUMBER",
+    "CHAR", "LPAREN", "RPAREN", "PLUS",
+    "MINUS", "MULTIPLY", "DIVIDE", "STRING"
+};
 
 typedef struct {
     int line, pos, index;
@@ -52,9 +67,16 @@ typedef struct {
     int capacity;
 } ErrorArray;
 
+typedef struct {
+    char** items;
+    int count;
+    int capacity;
+} IdentTable;
+
 TokenArray tokens = {NULL, 0, 0};
 CommentArray comments = {NULL, 0, 0};
 ErrorArray errors = {NULL, 0, 0};
+IdentTable ident_table = {NULL, 0, 0};
 
 char* string_buf = NULL;
 size_t string_buf_len = 0;
@@ -79,18 +101,60 @@ void add_to_array(void** arr, int* count, int* capacity, size_t item_size, void*
     (*count)++;
 }
 
-void add_token(int type, Fragment frag, int char_val, long num_val, char* str_val) {
-    Token token = {
-        .type = type,
-        .coords = frag,
-        .attr = {0}
-    };
+int find_or_add_ident(const char* name) {
+    for (int i = 0; i < ident_table.count; i++) {
+        if (strcmp(ident_table.items[i], name) == 0) {
+            return i + 1;
+        }
+    }
     
-    switch(type) {
-        case 3: token.attr.char_value = char_val; break;
-        case 2: token.attr.number_value = num_val; break;
-        case 1: token.attr.string_value = strdup(str_val); break;
-        case 10: token.attr.string_value = strdup(str_val); break;
+    if (ident_table.count >= ident_table.capacity) {
+        ident_table.capacity = ident_table.capacity ? ident_table.capacity * 2 : 16;
+        ident_table.items = realloc(ident_table.items, sizeof(char*) * ident_table.capacity);
+    }
+    
+    ident_table.items[ident_table.count] = strdup(name);
+    return ++ident_table.count;
+}
+
+void add_token(const char* type_name, Fragment frag, int char_val, long num_val, char* str_val) {
+    Token token = {0};
+    token.coords = frag;
+    
+    if (strcmp(type_name, "IDENT") == 0) {
+        token.type = TAG_IDENT;
+        token.attr.number_value = find_or_add_ident(str_val);
+        free(str_val);
+    }
+    else if (strcmp(type_name, "NUMBER") == 0) {
+        token.type = TAG_NUMBER;
+        token.attr.number_value = num_val;
+    }
+    else if (strcmp(type_name, "CHAR") == 0) {
+        token.type = TAG_CHAR;
+        token.attr.char_value = char_val;
+    }
+    else if (strcmp(type_name, "LPAREN") == 0) {
+        token.type = TAG_LPAREN;
+    }
+    else if (strcmp(type_name, "RPAREN") == 0) {
+        token.type = TAG_RPAREN;
+    }
+    else if (strcmp(type_name, "PLUS") == 0) {
+        token.type = TAG_PLUS;
+    }
+    else if (strcmp(type_name, "MINUS") == 0) {
+        token.type = TAG_MINUS;
+    }
+    else if (strcmp(type_name, "MULTIPLY") == 0) {
+        token.type = TAG_MULTIPLY;
+    }
+    else if (strcmp(type_name, "DIVIDE") == 0) {
+        token.type = TAG_DIVIDE;
+    }
+    else if (strcmp(type_name, "STRING") == 0) {
+        token.type = TAG_STRING;
+        token.attr.string_value = strdup(str_val);
     }
     
     add_to_array((void**)&tokens.items, &tokens.count, &tokens.capacity, sizeof(Token), &token);
@@ -99,7 +163,6 @@ void add_token(int type, Fragment frag, int char_val, long num_val, char* str_va
 void add_comment(Fragment frag) {
     Comment comment = {
         .coords = frag
-       
     };
     add_to_array((void**)&comments.items, &comments.count, &comments.capacity, sizeof(Comment), &comment);
 }
@@ -117,20 +180,33 @@ void print_frag(Fragment f) {
 }
 
 void print_all() {
+    printf("\nIDENTIFIER TABLE (%d):\n", ident_table.count);
+    for (int i = 0; i < ident_table.count; i++) {
+        printf("%d: %s\n", i+1, ident_table.items[i]);
+    }
+    
     printf("\nTOKENS (%d):\n", tokens.count);
     for (int i = 0; i < tokens.count; i++) {
         print_frag(tokens.items[i].coords);
+        printf(" %s", tag_names[tokens.items[i].type]);
+        
         switch(tokens.items[i].type) {
-            case 1: printf(" IDENT %s\n", tokens.items[i].attr.string_value); break;
-            case 2: printf(" NUMBER %ld\n", tokens.items[i].attr.number_value); break;
-            case 3: printf(" CHAR %d\n", tokens.items[i].attr.char_value); break;
-            case 4: printf(" LPAREN\n"); break;
-            case 5: printf(" RPAREN\n"); break;
-            case 6: printf(" PLUS\n"); break;
-            case 7: printf(" MINUS\n"); break;
-            case 8: printf(" MULTIPLY\n"); break;
-            case 9: printf(" DIVIDE\n"); break;
-            case 10: printf(" STRING %s\n", tokens.items[i].attr.string_value); break;
+            case TAG_IDENT:
+                printf(" %ld (%s)\n", tokens.items[i].attr.number_value, 
+                       ident_table.items[tokens.items[i].attr.number_value - 1]);
+                break;
+            case TAG_STRING:
+                printf(" %s\n", tokens.items[i].attr.string_value);
+                break;
+            case TAG_NUMBER:
+                printf(" %ld\n", tokens.items[i].attr.number_value);
+                break;
+            case TAG_CHAR:
+                printf(" %d\n", tokens.items[i].attr.char_value);
+                break;
+            default:
+                printf("\n");
+                break;
         }
     }
     
@@ -148,9 +224,16 @@ void print_all() {
 
 void free_arrays() {
     for (int i = 0; i < tokens.count; i++) {
-        if (tokens.items[i].type == 1 || tokens.items[i].type == 10) free(tokens.items[i].attr.string_value);
+        if (tokens.items[i].type == TAG_STRING) {
+            free(tokens.items[i].attr.string_value);
+        }
     }
     free(tokens.items);
+    
+    for (int i = 0; i < ident_table.count; i++) {
+        free(ident_table.items[i]);
+    }
+    free(ident_table.items);
     
     for (int i = 0; i < comments.count; i++) {
         free(comments.items[i].text);
@@ -229,9 +312,9 @@ HEX         [0-9a-fA-F]
 <COMMENT>\n          { update_position(yytext, yyleng); }
 <COMMENT><<EOF>> {
     add_error(comment_start, "Find end of programm expected *)");
-    clear_string_buf();  // Очищаем буфер
-    BEGIN(INITIAL);      // Возвращаемся в начальное состояние
-    return 0;            // Завершаем лексический анализ
+    clear_string_buf();
+    BEGIN(INITIAL);
+    return 0;
 }
 
 "{"         { 
@@ -246,7 +329,7 @@ HEX         [0-9a-fA-F]
     frag.following.pos++; 
     frag.following.index++;
     append_to_string('\0');
-    add_token(10, frag, 0, 0, string_buf);
+    add_token("STRING", frag, 0, 0, string_buf);
     clear_string_buf();
     update_position(yytext, yyleng);
     BEGIN(INITIAL);
@@ -283,9 +366,9 @@ HEX         [0-9a-fA-F]
 }
 <STRING><<EOF>> {
     add_error(str_start, "Unclosed string, expected '}'");
-    clear_string_buf();  // Очищаем буфер
-    BEGIN(INITIAL);      // Возвращаемся в начальное состояние
-    return 0;            // Завершаем лексический анализ
+    clear_string_buf();
+    BEGIN(INITIAL);
+    return 0;
 }
 
 <ESCAPE>{HEX}{2} {
@@ -297,12 +380,8 @@ HEX         [0-9a-fA-F]
     if (endptr == hex || errno == ERANGE) {
         add_error(cur_pos, "Invalid hex escape");
     } else {
-        
-        char string[9]; 
-        snprintf(string, sizeof(string), "%d", c); 
-        for(int i=0; i< strlen(string);i++){
-            append_to_string(string[i]);
-        }
+        char ch = (char)c;
+        append_to_string(ch);
     }
     
     update_position(yytext, yyleng);
@@ -318,43 +397,43 @@ HEX         [0-9a-fA-F]
 "+"         { 
     Fragment frag = {cur_pos, cur_pos};
     frag.following.pos++; frag.following.index++;
-    add_token(6, frag, 0, 0, NULL);
+    add_token("PLUS", frag, 0, 0, NULL);
     update_position(yytext, yyleng);
 }
 
 "-"         { 
     Fragment frag = {cur_pos, cur_pos};
     frag.following.pos++; frag.following.index++;
-    add_token(7, frag, 0, 0, NULL);
+    add_token("MINUS", frag, 0, 0, NULL);
     update_position(yytext, yyleng);
 }
 
 "*"         { 
     Fragment frag = {cur_pos, cur_pos};
     frag.following.pos++; frag.following.index++;
-    add_token(8, frag, 0, 0, NULL);
+    add_token("MULTIPLY", frag, 0, 0, NULL);
     update_position(yytext, yyleng);
 }
 
 "/"         { 
     Fragment frag = {cur_pos, cur_pos};
     frag.following.pos++; frag.following.index++;
-    add_token(9, frag, 0, 0, NULL);
+    add_token("DIVIDE", frag, 0, 0, NULL);
     update_position(yytext, yyleng);
 }
 
 {NUMBER}    { 
     Fragment frag = {cur_pos, cur_pos};
     frag.following.pos += yyleng; frag.following.index += yyleng;
-    long num = atol(yytext);
-    add_token(2, frag, 0, num, NULL);
+    long long num = atol(yytext);
+    add_token("NUMBER", frag, 0, num, NULL);
     update_position(yytext, yyleng);
 }
 
 {IDENT}     { 
     Fragment frag = {cur_pos, cur_pos};
     frag.following.pos += yyleng; frag.following.index += yyleng;
-    add_token(1, frag, 0, 0, yytext);
+    add_token("IDENT", frag, 0, 0, strdup(yytext));
     update_position(yytext, yyleng);
 }
 
