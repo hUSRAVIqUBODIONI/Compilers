@@ -1,14 +1,18 @@
-package lab2_3 
+package com.example.lab
+
 import java.io.File
-import java.io.InputStream
-import lab2_3.Tokenize
+
 fun main() {
-    val inputStream: InputStream = File("/Users/husravi_qubodioni/Desktop/Git-reps/Compilers/lab2.3/example.txt").inputStream()
-    val inputString = inputStream.bufferedReader().use { it.readText() }
-    val Tokenizer = Tokenize(inputString)
-    Tokenizer.tokenize().forEach {
-        print("${it.type} ")
-    }
-    val parser = Parser(Tokenizer.tokens)
-    parser.parse()
+
+    val inputPath = "/Users/husravi_qubodioni/AndroidStudioProjects/app/src/main/java/com/example/lab/example.txt"
+    val inputText = File(inputPath).readText()
+    val tokenizer = Tokenize(inputText)
+    val tokens = tokenizer.tokenize()
+    val parser = Parser(tokens)
+    val tree = parser.parse()
+    val dotOutput = generateDotString(tree)
+    File("/Users/husravi_qubodioni/AndroidStudioProjects/app/src/main/java/com/example/lab/parse_tree.dot").writeText(dotOutput)
 }
+
+
+// dot -Tpng parse_tree.dot -o tree.png
