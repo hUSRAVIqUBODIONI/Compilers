@@ -1,8 +1,7 @@
 package com.example.lab
 
 class Parser(val tokens: MutableList<Token>) {
-    private val tokenIterator = tokens.iterator() // Итератор по токенам
-    private val parseStack = mutableListOf<String>() // Стек для хранения правил
+    private val tokenIterator = tokens.iterator()
 
     val GRAMMAR = "GRAMMAR"
     val START = "START"
@@ -23,103 +22,75 @@ class Parser(val tokens: MutableList<Token>) {
     val KEY_TOKENS = "tokens"
     val EPS = "eps"
 
-    // Парсинг таблицы
     val parseTable = mapOf<String, List<Map<String, List<String>>>>(
-        GRAMMAR to listOf(
-            mapOf(KEY_TOKENS to listOf(TOKENS, RULES, START))
-        ),
-        START to listOf(
-            mapOf(KEY_START to listOf(KEY_START, NAME,DOT))
-        ),
-        TOKENS to listOf(
-            mapOf(KEY_TOKENS to listOf(TOKEN, TOKENS), NAME to listOf(EPS))
-        ),
-        TOKEN to listOf(
-            mapOf(KEY_TOKENS to listOf(KEY_TOKENS, NAME, TOKEN_LIST, DOT))
-        ),
-        TOKEN_LIST to listOf(
-            mapOf(COMMA to listOf(COMMA, NAME, TOKEN_LIST),DOT to listOf(EPS))
-        ),
-        RULES to listOf(
-            mapOf(NAME to listOf(UNIT, UNITS))
-        ),
-        UNIT to listOf(
-            mapOf(NAME to listOf(NAME, IS, RULE_LIST, END))
-        ),
-        RULE_LIST to listOf(
-            mapOf(NAME to listOf(NAME, RULE_LIST), COMMA to listOf(EPS),DOT to listOf(EPS))
-        ),
-        END to listOf(
-            mapOf(COMMA to listOf(COMMA), DOT to listOf(DOT))
-        ),
-        UNITS to listOf(
-            mapOf(NAME to listOf(UNIT, UNITS), KEY_START to listOf(EPS))
-        )
+        GRAMMAR to listOf(mapOf(KEY_TOKENS to listOf(TOKENS, RULES, START))),
+        START to listOf(mapOf(KEY_START to listOf(KEY_START, NAME))),
+        TOKENS to listOf(mapOf(KEY_TOKENS to listOf(TOKEN, TOKENS), NAME to listOf(EPS))),
+        TOKEN to listOf(mapOf(KEY_TOKENS to listOf(KEY_TOKENS, NAME, TOKEN_LIST, DOT))),
+        TOKEN_LIST to listOf(mapOf(COMMA to listOf(COMMA, NAME, ALPHA), DOT to listOf(EPS))),
+        ALPHA to listOf(mapOf(COMMA to listOf(TOKEN_LIST), DOT to listOf(EPS))),
+        RULES to listOf(mapOf(NAME to listOf(UNIT, UNITS))),
+        UNIT to listOf(mapOf(NAME to listOf(NAME, IS, RULE_LIST, END))),
+        RULE_LIST to listOf(mapOf(NAME to listOf(NAME, RULE_LIST), DOT to listOf(EPS), COMMA to listOf(EPS))),
+        END to listOf(mapOf(COMMA to listOf(COMMA), DOT to listOf(DOT))),
+        UNITS to listOf(mapOf(NAME to listOf(UNIT, UNITS), DOT to listOf(EPS),KEY_START to listOf(EPS)))
     )
 
-    fun parse() {
-        val parseStack: ArrayDeque<String> = ArrayDeque()
+    fun parse(): ParseTreeNode {
+        val parseStack: ArrayDeque<Pair<String, ParseTreeNode>> = ArrayDeque()
+        val root = ParseTreeNode(GRAMMAR)
+        parseStack.addFirst(GRAMMAR to root)
         var token = tokenIterator.nextOrNull()
-        parseStack.addFirst(GRAMMAR)
 
         while (parseStack.isNotEmpty()) {
-            val currentRule = parseStack.removeFirst()
+            val (currentRule, parentNode) = parseStack.removeFirst()
 
             if (currentRule == EPS) {
+                parentNode.children.add(ParseTreeNode(EPS))
                 continue
             }
 
             if (token == null) {
-                throw IllegalArgumentException("❌ Ошибка синтаксиса: достигнут конец входных данных, ожидался '$currentRule'.")
+                throw IllegalArgumentException("❌ Конец ввода. Ожидалось: '$currentRule'")
             }
 
             if (isTerminal(currentRule)) {
                 if ((currentRule == NAME && token.type == TokenType.VALUES) || currentRule == token.value) {
-
+                    parentNode.children.add(ParseTreeNode(token.value))
                     token = tokenIterator.nextOrNull()
-                    if (token != null)
                     continue
                 } else {
-                    throw IllegalArgumentException("❌ Ошибка синтаксиса: ожидался '$currentRule', но найден '${token.value}' (${token.type}) на ${token.line}:${token.column}.")
+                    throw IllegalArgumentException("❌ Ожидалось: '$currentRule', найдено: '${token.value}' (${token.type}) на ${token.line}:${token.column}")
                 }
             } else {
                 val productionRules = parseTable[currentRule]
-                if (productionRules == null) {
-                    throw IllegalArgumentException("❌ Ошибка: нет определений для нетерминала '$currentRule'.")
+                    ?: throw IllegalArgumentException("❌ Нет правил для '$currentRule'")
+
+                val selectedRule = when {
+                    token.type == TokenType.VALUES -> productionRules[0][NAME]
+                    else -> productionRules[0][token.value]
                 }
 
-                // Пытаемся найти подходящее правило по текущему токену
-
-                val selectedRule = if(token.type != TokenType.VALUES){productionRules[0].get(token.value)}
-                else{productionRules[0].get(NAME)}
-
                 if (selectedRule != null) {
-
+                    val ruleNode = ParseTreeNode(currentRule)
+                    parentNode.children.add(ruleNode)
 
                     for (symbol in selectedRule.reversed()) {
-
-                        parseStack.addFirst(symbol)
-
+                        parseStack.addFirst(symbol to ruleNode)
                     }
-
                 } else {
-                    throw IllegalArgumentException("❌ Ошибка: не найдено правил для '$currentRule' при токене '${token.value}' (${token.type}).")
+                    throw IllegalArgumentException("❌ Нет правила для '$currentRule' при токене '${token.value}' (${token.type})")
                 }
             }
         }
-        println("✅ Разбор завершён успешно!")
+
+        println("✅ Разбор завершён успешно.")
+        return root
     }
 
-
-
-    // Функция для проверки, является ли правило терминалом
-    fun isTerminal(rule: String): Boolean {
-
-        return rule[0].isLowerCase() || rule[0] ==',' || rule[0] == '.'
+    private fun isTerminal(rule: String): Boolean {
+        return rule == NAME || rule == DOT || rule == COMMA || rule == IS || rule == KEY_START || rule == KEY_TOKENS
     }
 
-    // Расширение для получения следующего токена или null, если их больше нет
-    fun <T> Iterator<T>.nextOrNull(): T? {
-        return if (hasNext()) next() else null
-    }
+    private fun <T> Iterator<T>.nextOrNull(): T? = if (hasNext()) next() else null
 }
