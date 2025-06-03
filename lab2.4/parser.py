@@ -53,35 +53,21 @@ class Parser:
             self.advance()
     
     def parse(self) -> Specification:
-        sections = []
-        section_parsers = [
-            self.parse_class_section,
-            self.parse_tokens_section,
-            self.parse_types_section,
-            self.parse_methods_section,
-            self.parse_grammar_section,
-            self.parse_axiom_section,
-            self.parse_end_section
-        ]
-        
-        for parser in section_parsers:
-            try:
-                section = parser()
-                if section:   
-                    sections.append(section)
-            except Exception as e:
-                self.add_error(f"Critical error in section: {str(e)}")
-                self.synchronize_to_next_section()
-        
-         
+        class_section = self.parse_class_section()
+        tokens_section = self.parse_tokens_section()
+        types_section = self.parse_types_section()
+        methods_section = self.parse_methods_section()
+        grammar_section = self.parse_grammar_section()
+        axiom_section = self.parse_axiom_section()
+        end_section = self.parse_end_section()
         return Specification(
-            class_section=sections[0] if len(sections) > 0 else ClassSection(""),
-            tokens_section=sections[1] if len(sections) > 1 else TokensSection([]),
-            types_section=sections[2] if len(sections) > 2 else TypesSection([]),
-            methods_section=sections[3] if len(sections) > 3 else MethodsSection([]),
-            grammar_section=sections[4] if len(sections) > 4 else GrammarSection([]),
-            axiom_section=sections[5] if len(sections) > 5 else AxiomSection(""),
-            end_section=sections[6] if len(sections) > 6 else EndSection()
+            class_section=class_section,
+            tokens_section=tokens_section,
+            types_section = types_section,
+            methods_section = methods_section,
+            grammar_section = grammar_section,
+            axiom_section = axiom_section,
+            end_section = end_section
         )
     
     def parse_class_section(self) -> ClassSection:
