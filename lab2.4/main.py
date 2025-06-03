@@ -93,6 +93,9 @@ def main():
     ast = parser.parse()
     
     print_ast(ast)
+    print("\n")
+    for i in parser.errors:
+        print(i,)
 
 
 if __name__ == "__main__":
