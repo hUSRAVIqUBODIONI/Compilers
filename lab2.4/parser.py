@@ -25,7 +25,7 @@ class Parser:
         self.errors.append(error_msg)
         return None
     
-    def consume(self, token_type: TokenType, error_msg: str) -> Optional[Token]:
+    def consume(self, token_type: TokenType, error_msg: str,need_advance = True) -> Optional[Token]:
         if self.current_token and self.current_token.type == token_type:
             token = self.current_token
             self.advance()
@@ -34,7 +34,7 @@ class Parser:
         self.add_error(error_msg)
         
          
-        if self.current_token:
+        if self.current_token and need_advance:
             self.advance()
         return None
     
@@ -44,13 +44,7 @@ class Parser:
                 return
             self.advance()
     
-    def synchronize_to_next_section(self):
-        section_starts = {
-            TokenType.CLASS, TokenType.TOKENS, TokenType.TYPES,
-            TokenType.METHODS, TokenType.GRAMMAR, TokenType.AXIOM, TokenType.END
-        }
-        while self.current_token and self.current_token.type not in section_starts:
-            self.advance()
+    
     
     def parse(self) -> Specification:
         class_section = self.parse_class_section()
@@ -80,13 +74,8 @@ class Parser:
         self.consume(TokenType.TOKENS, "Expected '%tokens'")
         tokens = []
         
-         
-        section_starts = {
-            TokenType.CLASS, TokenType.TYPES, TokenType.METHODS,
-            TokenType.GRAMMAR, TokenType.AXIOM, TokenType.END
-        }
         
-        while self.current_token and self.current_token.type not in section_starts:
+        while self.current_token and self.current_token.type != TokenType.TYPES:
             if self.current_token.type == TokenType.IDENTIFIER:
                 tokens.append(self.current_token.value)
                 self.advance()
@@ -106,7 +95,7 @@ class Parser:
             TokenType.GRAMMAR, TokenType.AXIOM, TokenType.END
         }
         
-        while self.current_token and self.current_token.type not in section_starts:
+        while self.current_token and self.current_token.type !=  TokenType.METHODS:
             try:
                 type_def = self.parse_type_def()
                 if type_def:
@@ -114,14 +103,14 @@ class Parser:
             except Exception as e:
                 self.add_error(f"Error in type definition: {str(e)}")
                  
-                self.synchronize({TokenType.SEMICOLON} | section_starts)
+                self.synchronize({TokenType.SEMICOLON, TokenType.IDENTIFIER})
             
              
             if self.current_token and self.current_token.type == TokenType.SEMICOLON:
                 self.advance()
-            elif self.current_token and self.current_token.type not in section_starts:
+            elif self.current_token:
                 self.add_error("Expected ';' after type definition")
-                self.synchronize(section_starts)
+                self.synchronize({TokenType.IDENTIFIER,TokenType.METHODS})
         
         return TypesSection(type_defs=type_defs)
     
@@ -161,12 +150,9 @@ class Parser:
         method_decls = []
         
          
-        section_starts = {
-            TokenType.CLASS, TokenType.TOKENS, TokenType.TYPES,
-            TokenType.GRAMMAR, TokenType.AXIOM, TokenType.END
-        }
+       
         
-        while self.current_token and self.current_token.type not in section_starts:
+        while self.current_token and self.current_token.type != TokenType.GRAMMAR:
             try:
                 method_decl = self.parse_method_decl()
                 if method_decl:
@@ -174,7 +160,7 @@ class Parser:
             except Exception as e:
                 self.add_error(f"Error in method declaration: {str(e)}")
                  
-                self.synchronize({TokenType.SEMICOLON} | section_starts)
+                self.synchronize({TokenType.SEMICOLON})
             
              
             if self.current_token and self.current_token.type == TokenType.SEMICOLON:
@@ -196,7 +182,7 @@ class Parser:
             params = self.parse_params()
         
         self.consume(TokenType.RPAREN, "Expected ')' in method declaration")
-        self.consume(TokenType.SEMICOLON, "Expected ';' after method declaration")
+        self.consume(TokenType.SEMICOLON, "Expected ';' after method declaration",False)
         
         return MethodDecl(
             return_type=return_type,
@@ -237,12 +223,9 @@ class Parser:
         rules = []
         
          
-        section_starts = {
-            TokenType.CLASS, TokenType.TOKENS, TokenType.TYPES,
-            TokenType.METHODS, TokenType.AXIOM, TokenType.END
-        }
+
         
-        while self.current_token and self.current_token.type not in section_starts:
+        while self.current_token and self.current_token.type != TokenType.AXIOM:
             try:
                 rule = self.parse_grammar_rule()
                 if rule:
@@ -250,7 +233,7 @@ class Parser:
             except Exception as e:
                 self.add_error(f"Error in grammar rule: {str(e)}")
                  
-                self.synchronize({TokenType.SEMICOLON} | section_starts)
+                self.synchronize({TokenType.SEMICOLON})
                 if self.current_token and self.current_token.type == TokenType.SEMICOLON:
                     self.advance()
         
@@ -263,14 +246,14 @@ class Parser:
         self.consume(TokenType.EQUALS, "Expected '=' in grammar rule")
         
          
-        rule_end = {TokenType.SEMICOLON, TokenType.AXIOM, TokenType.END}
+        
         
         alternatives = []
         try:
             alternatives = self.parse_alternatives()
         except Exception:
             self.add_error("Error parsing alternatives")
-            self.synchronize(rule_end)
+            self.synchronize({TokenType.SEMICOLON,TokenType.AXIOM})
         
         method_name = None
         if self.current_token and self.current_token.type == TokenType.SLASH:
