@@ -23,7 +23,7 @@ def main():
       PrintItem: PrintItem;
 
     %methods
-      ArithmExpr neg_op(ArithmOp, ArithmExpr);
+      ArithmExpr neg_op(ArithmOp, ArithmExpr)
       ArithmExprChunk chunk(ArithmOp, ArithmExpr);
       ArithmExpr neg_op(ArithmOp, ArithmExpr);
       ArithmExprChunk chunk(ArithmOp, ArithmExpr);
