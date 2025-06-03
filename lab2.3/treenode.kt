@@ -1,4 +1,4 @@
-package com.example.lab
+package lab2_3
 import java.io.File
 
 data class ParseTreeNode(

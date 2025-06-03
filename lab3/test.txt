@@ -1,4 +1,0 @@
-(* hello world *)
-{HEllo ## #AA #{  #AA ## HELO  #}}
-999999
-{ hello ## #AA

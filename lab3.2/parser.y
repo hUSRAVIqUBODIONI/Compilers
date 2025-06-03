@@ -69,10 +69,6 @@ print_l_cr_bracket
     ;
 
 print_r_cr_bracket
-    : {printf("\n"); tabulate(tab_count); printf("}\n"); }
-    ;
-
-print_r_cr_bracket_aux
     : {printf("\n"); tab_count -=1; tabulate(tab_count); printf("}"); }
     ;
 
@@ -102,7 +98,7 @@ enumeration_constant
 unary_expression
 	: primary_expression
 	| unary_operator unary_expression
-	| SIZEOF {printf("sizeof");} '(' print_l_paren type_name ')' print_r_paren
+	| SIZEOF {printf("sizeof");} '(' print_l_paren type_specifier ')' print_r_paren
 	;
 
 unary_operator
@@ -139,29 +135,11 @@ expression
 	| expression ',' { printf(", "); } assignment_expression
 	;
 
-constant_expression
-	: additive_expression
-	;
-
 declaration
-	: declaration_specifiers ';' { printf(";\n\n"); }
-	| declaration_specifiers init_declarator_list ';' { printf(";\n\n"); }
+	: type_specifier ';' { printf(";\n\n"); }
+	| type_specifier declarator ';' { printf(";\n\n"); }
 	;
 
-declaration_specifiers
-	: type_specifier  declaration_specifiers
-	| type_specifier
-	;
-
-init_declarator_list
-	: init_declarator
-	| init_declarator_list ',' { printf(", "); } init_declarator
-	;
-
-init_declarator
-	: declarator '=' { printf(" = "); } initializer
-	| declarator
-	;
 
 type_specifier
 	: VOID { printf("void "); }
@@ -177,8 +155,8 @@ type_specifier
 	;
 
 struct_or_union_specifier
-	: struct_or_union '{' print_l_cr_bracket struct_declaration_list '}' print_r_cr_bracket_aux
-	| struct_or_union IDENTIFIER { printf("%s ", $2); } '{'  print_l_cr_bracket struct_declaration_list '}'  print_r_cr_bracket_aux
+	: struct_or_union '{' print_l_cr_bracket struct_declaration_list '}' print_r_cr_bracket
+	| struct_or_union IDENTIFIER { printf("%s ", $2); } '{'  print_l_cr_bracket struct_declaration_list '}'  print_r_cr_bracket 
 	| struct_or_union IDENTIFIER { printf("%s ", $2); }
 	;
 
@@ -193,14 +171,9 @@ struct_declaration_list
 	;
 
 struct_declaration
-    : specifier_qualifier_list ';'
-    | specifier_qualifier_list struct_declarator_list ';' { printf(";"); }
+    : type_specifier ';'
+    | type_specifier struct_declarator_list ';' { printf(";"); }
     ;
-
-specifier_qualifier_list
-	: type_specifier specifier_qualifier_list
-	| type_specifier
-	;
 
 struct_declarator_list
 	: struct_declarator
@@ -208,8 +181,8 @@ struct_declarator_list
 	;
 
 struct_declarator
-	: ':' { printf(":"); } constant_expression
-	| declarator ':' { printf(":"); } constant_expression
+	: ':' { printf(":"); }
+	| declarator ':' { printf(":"); } additive_expression
 	| declarator
 	;
 
@@ -218,15 +191,15 @@ enum_name
 	;
 
 ident_print
-	: IDENTIFIER { printf("%s ", $1); }
+	: IDENTIFIER { printf("%s", $1); }
 	;
 
 enum_specifier
-	: enum_name '{' print_l_cr_bracket enumerator_list '}' print_r_cr_bracket_aux
-	| enum_name '{' print_l_cr_bracket enumerator_list ',' { printf(", "); } '}' print_r_cr_bracket_aux
-	| enum_name ident_print '{' print_l_cr_bracket enumerator_list '}' print_r_cr_bracket_aux
-	| enum_name ident_print '{' print_l_cr_bracket enumerator_list ',' { printf(","); } '}' print_r_cr_bracket_aux
-	| enum_name ident_print
+	: enum_name '{' print_l_cr_bracket enumerator_list '}' print_r_cr_bracket
+	| enum_name '{' print_l_cr_bracket enumerator_list ',' { printf(", "); } '}' print_r_cr_bracket
+	| enum_name ident_print '{' print_l_cr_bracket enumerator_list '}' print_r_cr_bracket
+	| enum_name ident_print '{' print_l_cr_bracket enumerator_list ',' { printf(","); } '}' print_r_cr_bracket
+	| enum_name ident_print 
 	;
 
 enumerator_list
@@ -235,7 +208,7 @@ enumerator_list
 	;
 
 enumerator	
-	: enumeration_constant '=' { printf(" = "); } constant_expression
+	: enumeration_constant '=' { printf(" = "); } additive_expression
 	| enumeration_constant
 	;
 
@@ -247,13 +220,7 @@ declarator
 
 direct_declarator
 	: IDENTIFIER { printf("%s", $1); }
-	| '(' print_l_paren declarator ')' print_r_paren
-	| direct_declarator '[' print_l_sq_bracket ']' print_r_sq_bracket
-	| direct_declarator '[' print_l_sq_bracket '*' ']' print_r_sq_bracket
 	| direct_declarator '[' print_l_sq_bracket assignment_expression ']' print_r_sq_bracket
-	| direct_declarator '(' print_l_paren  parameter_list ')' print_r_paren
-	| direct_declarator '(' print_l_paren  ')' print_r_paren
-	| direct_declarator '(' print_l_paren  identifier_list ')' print_r_paren
 	;
 
 pointer
@@ -261,36 +228,6 @@ pointer
 	| '*' print_star
 	;
 
-
-parameter_list
-	: parameter_declaration
-	| parameter_list ',' { printf(", "); } parameter_declaration
-	;
-
-parameter_declaration
-	: declaration_specifiers declarator
-	| declaration_specifiers
-	;
-
-identifier_list
-	: IDENTIFIER
-	| identifier_list ',' { printf(", "); } IDENTIFIER
-	;
-
-type_name
-	: specifier_qualifier_list
-	;
-
-initializer
-	: '{' print_l_cr_bracket initializer_list '}' print_r_cr_bracket
-	| '{' print_l_cr_bracket initializer_list ',' { printf(", "); } '}' print_r_cr_bracket
-	| assignment_expression
-	;
-
-initializer_list
-	: initializer
-	| initializer_list ',' { printf(", "); } initializer
-	;
 
 translation_unit
 	: declaration

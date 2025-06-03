@@ -1,0 +1,37 @@
+translation_unit
+	: function_definition
+	| translation_unit function_definition
+	;
+
+function_definition
+	: type_specifier direct_declarator declaration_list compound_statement
+	| type_specifier direct_declarator compound_statement
+	;
+
+type_specifier
+	: VOID
+	| CHAR
+	| SHORT
+	| INT
+	| LONG
+	| FLOAT
+	| DOUBLE
+	| BOOL
+	;
+
+direct_declarator
+	: IDENTIFIER
+	| direct_declarator '(' parameter_list ')'
+	| direct_declarator '(' ')'
+	;
+
+parameter_list
+	: parameter_declaration
+	| parameter_list ',' parameter_declaration
+	;
+
+parameter_declaration
+	: type_specifier declarator
+	| declaration_specifiers abstract_declarator
+	| declaration_specifiers
+	;

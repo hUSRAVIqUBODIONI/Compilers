@@ -1,0 +1,30 @@
+<Specification> ::= <ClassSection> <TokensSection> <TypesSection> <MethodsSection> <GrammarSection> <AxiomSection> <EndSection>
+
+<ClassSection> ::= "%class" <ClassName> "\n"
+<ClassName> ::= IDENTIFIER
+
+<TokensSection> ::= "%tokens" <TokenList> "\n"
+<TokenList> ::= IDENTIFIER (<TokenList>)*
+
+<TypesSection> ::= "%types" <TypeDefs> "\n"
+<TypeDefs> ::= <TypeDef> (";" <TypeDef>)* ":"
+<TypeDef> ::= IDENTIFIER ("," IDENTIFIER)*
+
+<MethodsSection> ::= "%methods" <MethodDecls> "\n"
+<MethodDecls> ::= <MethodDecl> ("\n" <MethodDecl>)*
+<MethodDecl> ::= <ReturnType> IDENTIFIER "(" <Params> ")" ";"
+<Params> ::= <Param> ("," <Param>)* | ε
+<Param> ::= <Type> IDENTIFIER
+
+<GrammarSection> ::= "%grammar" "\n" <GrammarRules>
+<GrammarRules>   ::= <GrammarRule> (<GrammarRules>)*
+<GrammarRule>    ::= IDENTIFIER "=" <Alternatives> "\n"
+<Alternatives>   ::= <Alternative> ("|" <Alternative>)*
+<Alternative>    ::= <Elements> ("/" IDENTIFIER)?
+<Elements>       ::= <Element> (<Elements>)*
+<Element>        ::= IDENTIFIER 
+                  | "%rep" "(" <Elements> ")" 
+                  | "(" <Alternatives> ")"
+
+<AxiomSection>  ::= "%axiom" IDENTIFIER "\n"
+<EndSection>     ::= "%end" "\n"

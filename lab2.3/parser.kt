@@ -1,4 +1,4 @@
-package com.example.lab
+package lab2_3
 
 class Parser(val tokens: MutableList<Token>) {
     private val tokenIterator = tokens.iterator()
