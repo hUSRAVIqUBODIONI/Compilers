@@ -1,0 +1,11 @@
+GRAMMAR -> TOKENS RULES START
+TOKENS ->TOKEN TOKENS | eps
+TOKEN -> tokens name TOKENLIST .
+TOKENLIST -> , name TOKENLIST | eps
+RULES -> UNIT UNITS
+UNIT -> name is RULELIST END
+RULELIST -> name RULELIST | eps
+END -> , | .
+UNITS -> UNIT UNITS| eps
+START -> start name .
+
