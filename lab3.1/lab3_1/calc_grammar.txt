@@ -1,0 +1,13 @@
+tokens (plus_sign), (star), (n), (left_paren), (right_paren), (slash).
+(S) is (T) (E1).
+(E1) is (plus_sign) (T) (E1),
+(E1) is .
+(T)   is (F) (T1).
+(T1) is (B) (F) (T1),
+(T1) is .
+(B) is (star),
+(B) is (slash).
+(F)   is (n),
+(F)   is (left_paren) (S) (right_paren).
+(* Conf *)
+start (S).
