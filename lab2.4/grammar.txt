@@ -4,7 +4,7 @@
 <ClassName> ::= IDENTIFIER
 
 <TokensSection> ::= "%tokens" <TokenList> "\n"
-<TokenList> ::= IDENTIFIER (<TokenList>)*
+<TokenList> ::= IDENTIFIER (<TokenList>)?
 
 <TypesSection> ::= "%types" <TypeDefs> "\n"
 <TypeDefs> ::= <TypeDef> (";" <TypeDef>)* ":"
@@ -14,17 +14,28 @@
 <MethodDecls> ::= <MethodDecl> ("\n" <MethodDecl>)*
 <MethodDecl> ::= <ReturnType> IDENTIFIER "(" <Params> ")" ";"
 <Params> ::= <Param> ("," <Param>)* | ε
-<Param> ::= <Type> IDENTIFIER
+<Param> ::= IDENTIFIER
 
-<GrammarSection> ::= "%grammar" "\n" <GrammarRules>
-<GrammarRules>   ::= <GrammarRule> (<GrammarRules>)*
-<GrammarRule>    ::= IDENTIFIER "=" <Alternatives> "\n"
-<Alternatives>   ::= <Alternative> ("|" <Alternative>)*
-<Alternative>    ::= <Elements> ("/" IDENTIFIER)?
-<Elements>       ::= <Element> (<Elements>)*
-<Element>        ::= IDENTIFIER 
-                  | "%rep" "(" <Elements> ")" 
-                  | "(" <Alternatives> ")"
+
+
+<GrammarRules> ::= <GrammarRule> ("\n" <GrammarRule>)*
+
+<GrammarRule> ::= IDENTIFIER "=" <Alternatives> ";"
+
+<Alternatives> ::= <Alternative> ("|" <Alternative>)*
+
+<Alternative> ::= <ElementList> ["/" IDENTIFIER]
+
+<ElementList> ::= <Element>*
+
+<Element> ::= <Repetition> | <Symbol> | <Group>
+
+<Repetition> ::= "%rep" <Group>
+
+<Symbol> ::= IDENTIFIER 
+
+<Group> ::= "(" <Alternatives> ")"
+
 
 <AxiomSection>  ::= "%axiom" IDENTIFIER "\n"
 <EndSection>     ::= "%end" "\n"
