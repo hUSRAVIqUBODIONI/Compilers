@@ -1,0 +1,20 @@
+tokens (is), (tokens), (comma), (dot), (left paren), (right paren), (name), (start).
+
+
+(GRAMMAR)   is (TOKENS) (RULES) (START).
+(TOKENS)    is (TOKEN) (TOKENS),
+(TOKENS)    is .
+(TOKEN) is (tokens) (name) (TOKENLIST) (dot).
+(TOKENLIST) is (comma) (name) (TOKENLIST),
+(TOKENLIST) is .
+(RULES)     is (UNIT) (UNITS).
+(UNIT)      is (name) (is) (RULELIST) (END).
+(RULELIST) is (name) (RULELIST),
+(RULELIST) is .
+(END) is (comma),
+(END) is (dot).
+(UNITS)      is (UNIT) (UNITS),
+(UNITS)      is .
+(START)     is (start) (name)  (dot).
+
+start (GRAMMAR).
