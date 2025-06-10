@@ -1,0 +1,104 @@
+Program → DeclarationList
+
+DeclarationList → eps
+DeclarationList → DeclarationList Declaration
+
+Declaration → TypeSpecifier AbstractDeclaratorsOpt ';'
+
+AbstractDeclaratorsOpt → eps
+AbstractDeclaratorsOpt → AbstractDeclarators
+
+AbstractDeclarators → AbstractDeclarator
+AbstractDeclarators → AbstractDeclarators ',' AbstractDeclarator
+
+AbstractDeclarator → AbstractDeclaratorStar
+AbstractDeclarator → AbstractDeclaratorArrayList
+
+AbstractDeclaratorStar → '*' AbstractDeclarator
+
+AbstractDeclaratorArrayList → AbstractDeclaratorArray
+AbstractDeclaratorArrayList → AbstractDeclaratorArrayList AbstractDeclaratorArray
+
+AbstractDeclaratorArray → '[' Expression ']'
+AbstractDeclaratorArray → AbstractDeclaratorPrim
+
+AbstractDeclaratorPrim → AbstractDeclaratorPrimSimple
+AbstractDeclaratorPrim → AbstractDeclaratorPrimDifficult
+
+AbstractDeclaratorPrimSimple → IDENTIFIER
+AbstractDeclaratorPrimDifficult → '(' AbstractDeclarator ')'
+
+TypeSpecifier → EnumTypeSpecifier
+TypeSpecifier → SimpleTypeSpecifier
+TypeSpecifier → StructOrUnionSpecifier
+
+SimpleTypeSpecifier → SimpleType
+
+SimpleType → 'char'
+SimpleType → 'short'
+SimpleType → 'int'
+SimpleType → 'long'
+SimpleType → 'float'
+SimpleType → 'double'
+SimpleType → 'signed'
+SimpleType → 'unsigned'
+
+EnumTypeSpecifier → 'enum' EnumStatement
+
+EnumStatement → FullEnumStatement
+EnumStatement → EmptyEnumStatement
+
+FullEnumStatement → IdentifierOpt '{' EnumeratorList CommaOpt '}'
+EmptyEnumStatement → IDENTIFIER
+
+IdentifierOpt → eps
+IdentifierOpt → IDENTIFIER
+
+EnumeratorList → Enumerator
+EnumeratorList → EnumeratorList ',' Enumerator
+
+Enumerator → IDENTIFIER EnumeratorExpressionOpt
+
+EnumeratorExpressionOpt → eps
+EnumeratorExpressionOpt → '=' ConstantExpression
+
+CommaOpt → eps
+CommaOpt → ','
+
+ConstantExpression → Expression
+
+Expression → ArithmeticExpression
+
+ArithmeticExpression → Term
+ArithmeticExpression → '+' Term
+ArithmeticExpression → '-' Term
+ArithmeticExpression → ArithmeticExpression AddOperation Term
+
+AddOperation → '+'
+AddOperation → '-'
+
+Term → Factor
+Term → Term MultOperation Factor
+
+MultOperation → '*'
+MultOperation → '/'
+
+Factor → '(' Expression ')'
+Factor → INTEGER
+Factor → IDENTIFIER
+Factor → 'sizeof' '(' TypeSizeofSpecifier IDENTIFIER ')'
+
+TypeSizeofSpecifier → 'struct'
+TypeSizeofSpecifier → 'union'
+TypeSizeofSpecifier → 'enum'
+
+StructOrUnionSpecifier → StructOrUnion StructOrUnionStatement
+
+StructOrUnion → 'struct'
+StructOrUnion → 'union'
+
+StructOrUnionStatement → FullStructOrUnionStatement
+StructOrUnionStatement → EmptyStructOrUnionStatement
+
+EmptyStructOrUnionStatement → IDENTIFIER
+FullStructOrUnionStatement → IdentifierOpt '{' DeclarationList '}'
