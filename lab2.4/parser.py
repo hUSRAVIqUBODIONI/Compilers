@@ -1,4 +1,4 @@
-from typing import List, Optional, Set, cast
+from typing import List, Optional, Set
 from lexer import Token, TokenType
 from ast import Specification, ClassSection, TokensSection, TypesSection, TypeDef, MethodsSection, MethodDecl, MethodParam, Repetition, Symbol, GrammarRule, GrammarSection, Alternative, Item, Group, AxiomSection, EndSection
 
@@ -64,48 +64,42 @@ class Parser:
             end_section = end_section
         )
     
+    #<ClassSection> ::= "%class" <ClassName> 
     def parse_class_section(self) -> ClassSection:
         self.consume(TokenType.CLASS, "Expected '%class'")
         class_name_token = self.consume(TokenType.IDENTIFIER, "Expected class name")
         class_name = class_name_token.value if class_name_token else "<missing>"
         return ClassSection(class_name=class_name)
     
+    #<TokensSection> ::= "%tokens" <TokenList> "\n"
     def parse_tokens_section(self) -> TokensSection:
         self.consume(TokenType.TOKENS, "Expected '%tokens'")
         tokens = []
         
-        
+        #<TokenList> ::= IDENTIFIER*
         while self.current_token and self.current_token.type != TokenType.TYPES:
             if self.current_token.type == TokenType.IDENTIFIER:
                 tokens.append(self.current_token.value)
                 self.advance()
             else:
-                self.add_error(f"Unexpected token in tokens section: {self.current_token.value}")
+                self.add_error(f"Expected token in tokens section: {self.current_token.value}")
                 self.advance()
         
         return TokensSection(tokens=tokens)
     
+
+    #<TypesSection> ::= "%types" <TypeDefs> "\n"
     def parse_types_section(self) -> TypesSection:
         self.consume(TokenType.TYPES, "Expected '%types'")
         type_defs = []
         
          
-        section_starts = {
-            TokenType.CLASS, TokenType.TOKENS, TokenType.METHODS,
-            TokenType.GRAMMAR, TokenType.AXIOM, TokenType.END
-        }
-        
+        #<TypeDefs> ::= <TypeDef> (";" <TypeDef>)*
         while self.current_token and self.current_token.type !=  TokenType.METHODS:
-            try:
-                type_def = self.parse_type_def()
-                if type_def:
-                    type_defs.append(type_def)
-            except Exception as e:
-                self.add_error(f"Error in type definition: {str(e)}")
-                 
-                self.synchronize({TokenType.SEMICOLON, TokenType.IDENTIFIER})
-            
-             
+
+            type_def = self.parse_type_def()
+            if type_def:
+                type_defs.append(type_def)
             if self.current_token and self.current_token.type == TokenType.SEMICOLON:
                 self.advance()
             elif self.current_token:
@@ -114,11 +108,13 @@ class Parser:
         
         return TypesSection(type_defs=type_defs)
     
+    #<TypeDef> ::= IDENTIFIER ("," IDENTIFIER)*
     def parse_type_def(self) -> TypeDef:
         types = []
-        
+        type = ""
         while self.current_token and self.current_token.type == TokenType.IDENTIFIER:
             type_name = self.current_token.value
+            
             self.advance()
             
              
@@ -126,7 +122,7 @@ class Parser:
                 self.advance()
                  
                 if self.current_token and self.current_token.type == TokenType.IDENTIFIER:
-                    type_name += ":" + self.current_token.value
+                    type = self.current_token.value
                     self.advance()
                 else:
                     self.add_error("Expected type identifier after ':'")
@@ -143,45 +139,41 @@ class Parser:
             self.add_error("Expected at least one type in type definition")
             return None
         
-        return TypeDef(types=types)
+        if  type =="":
+            self.add_error("Expected type after type definition")
+            return None
+        
+        return TypeDef(name=types,type = type)
     
+   
+    #<MethodsSection> ::= "%methods" <MethodDecls> "\n"
     def parse_methods_section(self) -> MethodsSection:
         self.consume(TokenType.METHODS, "Expected '%methods'")
         method_decls = []
         
-         
-       
-        
+        #<MethodDecls> ::= <MethodDecl> ("\n" <MethodDecl>)*
         while self.current_token and self.current_token.type != TokenType.GRAMMAR:
-            try:
-                method_decl = self.parse_method_decl()
-                if method_decl:
-                    method_decls.append(method_decl)
-            except Exception as e:
-                self.add_error(f"Error in method declaration: {str(e)}")
-                 
-                self.synchronize({TokenType.SEMICOLON})
-            
-             
-            if self.current_token and self.current_token.type == TokenType.SEMICOLON:
-                self.advance()
+            method_decl = self.parse_method_decl()
+            if method_decl:
+                method_decls.append(method_decl)
         
         return MethodsSection(method_decls=method_decls)
     
+    #<MethodDecl> ::= <ReturnType> IDENTIFIER "(" <Params> ")" ";"
     def parse_method_decl(self) -> MethodDecl:
         return_type_token = self.consume(TokenType.IDENTIFIER, "Expected return type")
         return_type = return_type_token.value if return_type_token else "<missing>"
         
-        method_name_token = self.consume(TokenType.IDENTIFIER, "Expected method name")
+        method_name_token = self.consume(TokenType.IDENTIFIER, "Expected method name",False)
         method_name = method_name_token.value if method_name_token else "<missing>"
         
-        self.consume(TokenType.LPAREN, "Expected '(' in method declaration")
+        self.consume(TokenType.LPAREN, "Expected '(' in method declaration",False)
         
         params = []
         if self.current_token and self.current_token.type != TokenType.RPAREN:
             params = self.parse_params()
         
-        self.consume(TokenType.RPAREN, "Expected ')' in method declaration")
+        self.consume(TokenType.RPAREN, "Expected ')' in method declaration",False)
         self.consume(TokenType.SEMICOLON, "Expected ';' after method declaration",False)
         
         return MethodDecl(
@@ -190,6 +182,7 @@ class Parser:
             params=params
         )
     
+    #<Params> ::= <Param> ("," <Param>)* | ε
     def parse_params(self) -> List[MethodParam]:
         params = []
         
@@ -218,127 +211,114 @@ class Parser:
         
         return params
     
+
+    #<GrammarSection> ::= "%grammar" "\n" <GrammarRules>
     def parse_grammar_section(self) -> GrammarSection:
         self.consume(TokenType.GRAMMAR, "Expected '%grammar'")
         rules = []
         
-         
-
         
+        #<GrammarRules>   ::= <GrammarRule> (<GrammarRules>)*
         while self.current_token and self.current_token.type != TokenType.AXIOM:
-            try:
-                rule = self.parse_grammar_rule()
-                if rule:
-                    rules.append(rule)
-            except Exception as e:
-                self.add_error(f"Error in grammar rule: {str(e)}")
-                 
-                self.synchronize({TokenType.SEMICOLON})
-                if self.current_token and self.current_token.type == TokenType.SEMICOLON:
-                    self.advance()
+            rule = self.parse_grammar_rule()
+            if rule:
+                rules.append(rule)
         
         return GrammarSection(rules=rules)
     
+
+    #<GrammarRule>    ::= IDENTIFIER "=" <Alternatives> "\n"
     def parse_grammar_rule(self) -> GrammarRule:
         non_terminal_token = self.consume(TokenType.IDENTIFIER, "Expected non-terminal")
         non_terminal = non_terminal_token.value if non_terminal_token else "<missing>"
         
         self.consume(TokenType.EQUALS, "Expected '=' in grammar rule")
-        
-         
-        
-        
         alternatives = []
-        try:
-            alternatives = self.parse_alternatives()
-        except Exception:
-            self.add_error("Error parsing alternatives")
-            self.synchronize({TokenType.SEMICOLON,TokenType.AXIOM})
         
-        method_name = None
-        if self.current_token and self.current_token.type == TokenType.SLASH:
-            self.advance()
-            method_name_token = self.consume(TokenType.IDENTIFIER, "Expected method name after '/'")
-            if method_name_token:
-                method_name = method_name_token.value
-        
+        alternatives = self.parse_alternatives()
+
         self.consume(TokenType.SEMICOLON, "Expected ';' after end of rule")
         
         return GrammarRule(
             non_terminal=non_terminal,
             alternatives=alternatives,
-            method_name=method_name
         )
     
+    #<Alternatives>   ::= <Alternative> ("|" <Alternative>)*
     def parse_alternatives(self) -> List[Alternative]:
         alternatives = []
-        
-        while True:
+    
+        while True and self.current_token.type:
             sequence = []
-            try:
-                sequence = self.parse_sequence()
-            except Exception:
-                self.add_error("Error parsing sequence")
-                 
-                self.synchronize({TokenType.OR, TokenType.SLASH, TokenType.SEMICOLON})
+        
+            sequence =self.parse_sequence()
+
             
             method_name = None
             if self.current_token and self.current_token.type == TokenType.SLASH:
                 self.advance()
-                method_name_token = self.consume(TokenType.IDENTIFIER, "Expected method name after '/'")
+                method_name_token = self.consume(TokenType.IDENTIFIER, "Expected method name after '/'",False)
+                self.synchronize({TokenType.OR,TokenType.SEMICOLON,TokenType.RPAREN})
                 if method_name_token:
                     method_name = method_name_token.value
-            
-            alternatives.append(Alternative(sequence=sequence, method_name=method_name))
-            
+            alternatives.append(Alternative(elementList=sequence, method_name=method_name))
             if self.current_token and self.current_token.type == TokenType.OR:
                 self.advance()
-            else:
+            else: 
                 break
-        
+       
         return alternatives
     
+
+    #<Sequence> ::= ( <Item> )*
     def parse_sequence(self) -> List[Item]:
         items = []
         
         while self.current_token and self.current_token.type not in {
             TokenType.OR, TokenType.SLASH, TokenType.SEMICOLON, TokenType.RPAREN
-        }:
-            try:
-                item = self.parse_item()
-                if item:
-                    items.append(item)
-            except Exception:
-                self.add_error("Error parsing grammar item")
-                 
+        }: 
+            item = self.parse_item()
+                
+            if item:
+                items.append(item)
+            else:
                 self.synchronize({
-                    TokenType.OR, TokenType.SLASH, TokenType.SEMICOLON, 
-                    TokenType.RPAREN, TokenType.IDENTIFIER,
-                    TokenType.LPAREN, TokenType.REP
-                })
-        
+                   TokenType.OR, TokenType.SLASH, TokenType.SEMICOLON}
+                   )
         return items
     
+    def parse_group(self) -> Group:
+        self.advance()
+        alternatives = self.parse_alternatives()
+        self.consume(TokenType.RPAREN, "Expected ')' after group")
+        return Group(alternatives=alternatives)
+
+    #<Item> ::= <Symbol> | <Group> | <Repetition>
     def parse_item(self) -> Optional[Item]:
         if not self.current_token:
             return None
             
         if self.current_token.type == TokenType.LPAREN:
-            self.advance()
-            alternatives = self.parse_alternatives()
-            self.consume(TokenType.RPAREN, "Expected ')' after group")
-            return Group(alternatives=alternatives)
+           return self.parse_group()
+            
+            
         
         elif self.current_token.type == TokenType.REP:
             self.advance()
-            self.consume(TokenType.LPAREN, "Expected '(' after %rep")
-            item = self.parse_alternatives()
-            self.consume(TokenType.RPAREN, "Expected ')' after %rep item")
-            return Repetition(item=item, is_rep=True)
+            item = []
+            if self.current_token.type == TokenType.LPAREN:
+                item = self.parse_group()
+            else:
+                self.add_error(f"Expected group after %rep")
+                return None
+                
+            return Repetition(rep_item=item)
         
         elif self.current_token.type == TokenType.IDENTIFIER:
+            
             symbol = Symbol(name=self.current_token.value)
             self.advance()
+            
             return symbol
         
         else:
@@ -346,12 +326,16 @@ class Parser:
             self.advance()
             return None
     
+   
+    
+    #<AxiomSection>  ::= "%axiom" IDENTIFIER "\n"
     def parse_axiom_section(self) -> AxiomSection:
         self.consume(TokenType.AXIOM, "Expected '%axiom'")
         axiom_token = self.consume(TokenType.IDENTIFIER, "Expected axiom name")
         axiom = axiom_token.value if axiom_token else "<missing>"
         return AxiomSection(axiom=axiom)
     
+    #<EndSection>     ::= "%end" "\n"
     def parse_end_section(self) -> EndSection:
         self.consume(TokenType.END, "Expected '%end'")
         return EndSection()
