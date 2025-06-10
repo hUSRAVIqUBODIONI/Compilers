@@ -27,11 +27,13 @@ class TokensSection(ASTNode):
 
 @dataclass
 class TypeDef(ASTNode):
-    types: List[str]
+    name: List[str]
+    type: str
 
 @dataclass
 class TypesSection(ASTNode):
     type_defs: List['TypeDef']
+
 
 @dataclass
 class MethodParam(ASTNode):
@@ -47,18 +49,15 @@ class MethodDecl(ASTNode):
 class MethodsSection(ASTNode):
     method_decls: List['MethodDecl']
 
-
-
-
 @dataclass
 class GrammarRule(ASTNode):
     non_terminal: str
     alternatives: List['Alternative']
-    method_name: Optional[str]
+
 
 @dataclass
 class Alternative(ASTNode):
-    sequence: List['Item']
+    elementList: List['Item']
     method_name: Optional[str]
 
 @dataclass
@@ -75,8 +74,7 @@ class Group(Item):
 
 @dataclass
 class Repetition(Item):
-    item: Union['Symbol', 'Group']
-    is_rep: bool = False  
+    rep_item : Group 
 
 @dataclass
 class GrammarSection(ASTNode):
@@ -121,8 +119,8 @@ def print_ast(node: ASTNode, indent: int = 0, prefix: str = "") -> None:
             print(f"{indent_str}  [{i}]: {token}")
             
     elif isinstance(node, TypeDef):
-        print(f"{indent_str}{prefix}TypeDef:")
-        for i, type_name in enumerate(node.types):
+        print(f"{indent_str}{prefix}TypeDef {node.type}:")
+        for i, type_name in enumerate(node.name):
             print(f"{indent_str}  [{i}]: {type_name}")
             
     elif isinstance(node, TypesSection):
@@ -151,14 +149,13 @@ def print_ast(node: ASTNode, indent: int = 0, prefix: str = "") -> None:
             
     elif isinstance(node, GrammarRule):
         print(f"{indent_str}{prefix}GrammarRule(non_terminal='{node.non_terminal}')")
-        print(f"{indent_str}  method_name: {node.method_name or 'None'}")
         for i, alt in enumerate(node.alternatives):
             print_ast(alt, indent + 4, f"alternative[{i}]: ")
             
     elif isinstance(node, Alternative):
         print(f"{indent_str}{prefix}Alternative(method_name={node.method_name or 'None'})")
-        for i, item in enumerate(node.sequence):
-            print_ast(item, indent + 4, f"element[{i}]: ")
+        for i, item in enumerate(node.elementList):
+            print_ast(item, indent + 4, f"element[{i}]")
             
     elif isinstance(node, Symbol):
         print(f"{indent_str}{prefix}Symbol(name='{node.name}')")
@@ -170,7 +167,7 @@ def print_ast(node: ASTNode, indent: int = 0, prefix: str = "") -> None:
             
     elif isinstance(node, Repetition):
         print(f"{indent_str}{prefix}Repetition:")
-        print_ast(node.item, indent + 4, "repeated: ")
+        print_ast(node.rep_item, indent + 4, "repeated: ")
 
 
     else:
