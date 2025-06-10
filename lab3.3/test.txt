@@ -1,0 +1,80 @@
+struct Coords {
+  int x, y;
+};
+
+enum Color {
+  COLOR_RED = 1,
+  COLOR_GREEN = 2,
+  COLOR_BLUE = 4,
+  COLOR_HIGHLIGHT = 8, 
+};
+
+enum ScreenType {
+  SCREEN_TYPE_TEXT,
+  SCREEN_TYPE_GRAPHIC
+} screen_type; 
+
+enum {
+  HPIXELS = 480,
+  WPIXELS = 640,
+  HCHARS = 24,
+  WCHARS = 80,
+};
+
+
+struct ScreenChar {
+  char symbol;
+  enum Color sym_color;
+  enum Color back_color;
+};
+
+struct TextScreen {
+  struct ScreenChar chars[HCHARS][WCHARS];
+};
+
+struct GrahpicScreen {
+  struct TextScreen aha;
+  struct TextScreen ahah;
+};
+
+
+union Screen {
+  struct TextScreen text;
+  struct GrahpicScreen graph;
+};
+
+enum {
+  TEXT_SCREEN_SIZE = sizeof(struct TextScreen),
+  BUFFER_SIZE = sizeof(union Screen),
+  PAGE_SIZE = 4096,
+  PAGES_FOR_BUFFER = (BUFFER_SIZE + PAGE_SIZE - 1) / PAGE_SIZE
+};
+
+struct Token {
+  struct Fragment {
+    struct Pos {
+      int line;
+      int col;
+    } starting, following;
+  } fragment;
+
+  enum { Ident, IntConst, FloatConst } type;
+
+  union {
+    char *name;
+    int int_value;
+    double float_value1;
+    double float_value2;
+  } info;
+};
+
+struct D {
+  double x;
+};
+
+enum AA { aa = sizeof(struct Token), bb = sizeof(struct Fragment) };
+
+struct List {
+  struct Token value;
+  struct List *next;
+};
